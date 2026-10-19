@@ -1,0 +1,23 @@
+# Installed by Converto's install-context-menu.py. No GTK dependency in this process.
+import gi
+gi.require_version('Nautilus', '4.0')
+from gi.repository import Gio, GObject, Nautilus
+
+LAUNCHER = __CONVERTO_LAUNCHER__
+
+class ConvertoMenuProvider(GObject.GObject, Nautilus.MenuProvider):
+    def get_file_items(self, files):
+        if not files:
+            return []
+        paths = [Gio.File.new_for_uri(file.get_uri()).get_path() for file in files]
+        # Remote URLs and virtual locations need downloading before conversion.
+        if any(path is None for path in paths):
+            return []
+        item = Nautilus.MenuItem(name='Converto::convert', label='Convert',
+                                 tip='Choose a format in Converto', icon='document-save-as')
+        item.connect('activate', self.activate, paths)
+        return [item]
+
+    def activate(self, item, paths):
+        # Separate argv entries preserve spaces, newlines and shell metacharacters.
+        Gio.Subprocess.new([LAUNCHER, '--', *paths], Gio.SubprocessFlags.NONE)

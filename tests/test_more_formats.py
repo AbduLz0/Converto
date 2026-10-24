@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -32,6 +33,7 @@ class MoreFormatsTests(unittest.TestCase):
                 with tarfile.open(convert(src,fmt)[0]) as archive:
                     self.assertEqual(archive.extractfile('note.txt').read(),b'archive payload')
 
+    @unittest.skipUnless(shutil.which('pdftoppm'), 'Poppler not installed')
     def test_new_pdf_images(self):
         src = self.root/'pages.pdf'
         Image.new('RGB',(32,32),'blue').save(src,save_all=True,append_images=[Image.new('RGB',(32,32),'red')])
@@ -48,12 +50,14 @@ class MoreFormatsTests(unittest.TestCase):
         result = subprocess.run(['ffprobe','-v','error','-show_streams','-of','json',str(path)],capture_output=True,check=True)
         self.assertIn(kind, [s['codec_type'] for s in json.loads(result.stdout)['streams']])
 
+    @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'FFmpeg/ffprobe not installed')
     def test_new_audio(self):
         src = self.root/'tone.wav'
         subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','sine=duration=0.3',str(src)],check=True)
         for fmt in ['aac','aiff','wma','ac3']:
             with self.subTest(format=fmt): self.probe(convert(src,fmt)[0],'audio')
 
+    @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'FFmpeg/ffprobe not installed')
     def test_new_video_with_audio(self):
         src = self.root/'clip.mp4'
         subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','color=s=64x48:d=0.4',
@@ -63,6 +67,7 @@ class MoreFormatsTests(unittest.TestCase):
                 out = convert(src,fmt)[0]
                 self.probe(out,'video'); self.probe(out,'audio')
 
+    @unittest.skipUnless(shutil.which('libreoffice'), 'LibreOffice not installed')
     def test_new_office_exports(self):
         src = self.root/'note.txt'; src.write_text('Converto document export')
         for fmt in ['doc','rtf','epub']:
@@ -76,6 +81,7 @@ class MoreFormatsTests(unittest.TestCase):
         csv = self.root/'sheet.csv'; csv.write_text('name,amount\none,42\n')
         self.assertTrue(convert(csv,'xls')[0].read_bytes().startswith(bytes.fromhex('d0cf11e0')))
 
+    @unittest.skipUnless(shutil.which('libreoffice'), 'LibreOffice not installed')
     def test_presentation_export(self):
         source = self.root/'slides.odp'
         with zipfile.ZipFile(source,'w') as z:

@@ -1,0 +1,23 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  conversions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install system conversion engines
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pil python3-gi python3-nautilus ffmpeg libreoffice poppler-utils
+      - name: Run conversion and integration tests
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_*.py' -v

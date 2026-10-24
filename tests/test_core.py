@@ -7,7 +7,7 @@ import tempfile
 import threading
 import unittest
 import zipfile
-from PIL import Image
+from PIL import Image, PngImagePlugin
 from converto.core import convert, targets, common_targets, Cancelled, ConversionError
 
 class ConversionTests(unittest.TestCase):
@@ -44,6 +44,38 @@ class ConversionTests(unittest.TestCase):
         p = self.root/'animated.gif'
         Image.new('RGB',(2,2),'red').save(p,save_all=True,append_images=[Image.new('RGB',(2,2),'blue')])
         with self.assertRaises(ConversionError): convert(p, 'png')
+    def test_cmyk_exports_and_orientation(self):
+        source = self.root / 'print.jpg'
+        exif = Image.Exif()
+        exif[274] = 6
+        exif[315] = 'Private author'
+        Image.new('CMYK', (12, 8), (0, 150, 180, 20)).save(source, exif=exif)
+        before = source.read_bytes()
+        for target in ('png', 'bmp', 'gif', 'tga'):
+            with self.subTest(target=target):
+                with Image.open(convert(source, target)[0]) as output:
+                    output.load()
+                    self.assertEqual(output.size, (8, 12))
+                    self.assertNotEqual(output.mode, 'CMYK')
+                    self.assertNotIn(315, output.getexif())
+        self.assertEqual(source.read_bytes(), before)
+    def test_strip_preserves_palette_and_color_key_transparency(self):
+        for mode, transparent in [('P', 0), ('RGB', (255, 0, 0))]:
+            with self.subTest(mode=mode):
+                source = self.root / f'transparent-{mode}.png'
+                img = Image.new(mode, (2, 1), 0 if mode == 'P' else 'red')
+                if mode == 'P': img.putpalette([255, 0, 0, 0, 0, 255] + [0] * 762)
+                img.putpixel((1, 0), 1 if mode == 'P' else (0, 0, 255))
+                metadata = PngImagePlugin.PngInfo()
+                metadata.add_text('Author', 'Private author')
+                img.save(source, transparency=transparent, pnginfo=metadata)
+                before = source.read_bytes()
+                with Image.open(source) as original:
+                    expected = original.convert('RGBA').tobytes()
+                with Image.open(convert(source, 'png', operation='strip')[0]) as output:
+                    self.assertEqual(output.convert('RGBA').tobytes(), expected)
+                    self.assertNotIn('Author', output.info)
+                self.assertEqual(source.read_bytes(), before)
     def test_csv_quoted_cells(self):
         p = self.root/'table.csv'; p.write_text('name,value\n"a,b","two\nlines"\n')
         out = convert(p,'tsv')[0]

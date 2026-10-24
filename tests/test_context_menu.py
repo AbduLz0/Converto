@@ -8,9 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 class ContextMenuTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import gi
-        try: gi.require_version('Nautilus', '4.0')
-        except ValueError: raise unittest.SkipTest('python3-nautilus not installed')
+        try:
+            import gi
+            gi.require_version('Nautilus', '4.0')
+        except (ImportError, ValueError):
+            raise unittest.SkipTest('python3-nautilus not installed')
         cls.extension = ModuleType('converto_extension_test')
         text = (ROOT/'integrations/converto-nautilus.py.in').read_text()
         exec(compile(text.replace('__CONVERTO_LAUNCHER__', repr(str(ROOT/'run.sh'))), '<extension>', 'exec'), cls.extension.__dict__)

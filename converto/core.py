@@ -161,6 +161,10 @@ def convert(source, target, cancel=None, operation='convert'):
                 img = ImageOps.exif_transpose(original)
                 if operation == 'resize': img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
                 if operation == 'rotate': img = img.transpose(Image.Transpose.ROTATE_270)
+                if img.mode == 'CMYK' and target in {'png', 'bmp', 'gif', 'tga'}:
+                    img = img.convert('RGB')
+                    # A CMYK profile must not be attached to RGB pixel data.
+                    img.info.pop('icc_profile', None)
                 if target in {'jpg', 'pdf', 'ppm'}:
                     if 'A' in img.getbands() or 'transparency' in img.info:
                         rgba = img.convert('RGBA')
@@ -170,7 +174,11 @@ def convert(source, target, cancel=None, operation='convert'):
                     else: img = img.convert('RGB')
                 # All image exports omit EXIF; strip also clears embedded profile/text.
                 img.info.pop('exif', None)
-                if operation == 'strip': img.info.clear()
+                if operation == 'strip':
+                    # Palette/color-key transparency describes pixels, not metadata.
+                    # Preserve it as an alpha channel before clearing image info.
+                    if 'transparency' in img.info: img = img.convert('RGBA')
+                    img.info.clear()
                 if target == 'ico':
                     img = ImageOps.contain(img.convert('RGBA'), (256, 256))
                     canvas = Image.new('RGBA', (256, 256))

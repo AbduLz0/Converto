@@ -60,6 +60,7 @@ Batch selections show only common destinations. Each selected item produces its 
 - Animated and multipage image input is explicitly rejected rather than silently losing frames. GIF video export is supported.
 - ICO exports fit artwork into a transparent 256 × 256 canvas and include standard icon sizes. GIF image export is single-frame; GIF video export retains animation. PPM flattens transparency onto white.
 - Image conversions omit EXIF; “Remove metadata” additionally drops image profile/text metadata and exports PNG (JPEG for JPEG input). JPEG/PDF use white behind transparency.
+- Removing metadata preserves palette and color-key transparency. CMYK images are converted to RGB for PNG, BMP, GIF, and TGA export; these conversions are not ICC color-managed.
 - Spreadsheet CSV export follows LibreOffice's sheet/filter defaults. It does not preserve an entire multi-sheet workbook.
 - Subtitle conversion retains ordinary cue text/timing; styling, cue settings, and WEBVTT regions/notes are not preserved in SRT/TXT.
 - There is no background autostart, tray icon, global Wayland integration, or adjustable quality interface yet. Closing the window quits the app; closing during a job asks you to cancel first.
@@ -90,7 +91,7 @@ These dependencies were already present on the development machine. Optional con
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-The context-menu integration tests verify the actual Nautilus menu provider, multi-selection, remote-location filtering, and exact filename handoff. See [research and roadmap](docs/RESEARCH.md) for the original feature study.
+Tests that need FFmpeg, Poppler, LibreOffice, or Nautilus skip when those optional dependencies are absent. GitHub Actions installs the converters and runs the complete suite on Ubuntu. Image regression tests cover transparent metadata removal and CMYK exports. The context-menu integration tests verify the actual Nautilus menu provider, multi-selection, remote-location filtering, and exact filename handoff. See [research and roadmap](docs/RESEARCH.md) for the original feature study.
 
 ## Structure
 
